@@ -12,29 +12,42 @@ import java.util.concurrent.Future
 
 fun main(args: Array<String>) {
     val productIDs= listOf<String>("1","2","3")
-    val service="https://services.odata.org/Northwind/Northwind.svc/Products";
-//    val prettyJsonString=getProduct(service)
-//
-//    println(prettyJsonString)
+    val promises= mutableListOf<CompletableFuture<String>>()
+    productIDs.forEach { promises.add(getProductByIDAsync(it)) }
+    promises.forEach{promise->
+        promise.thenAccept({println(it)})
+    }
 
+    Thread.sleep(10000)
 }
-//fun getProductByID(id:String):CompletableFuture<String>?{
-//    val httpClient = HttpClient()
-//    var jsonResponse = ""
-//    val queryParams = HashMap<String, String>()
-//    queryParams.put("\$format", "json")
-//    try {
-//        val url="https://services.odata.org/Northwind/Northwind.svc/Products/($id)";
-//        jsonResponse = httpClient.request(url, HttpMethod.GET,
-//            mutableMapOf<String,String>(), queryParams, null)
-//        val gson = GsonBuilder().setPrettyPrinting().create()
-//        val jp = JsonParser()
-//        val je = jp.parse(jsonResponse)
-//        val prettyJsonString = gson.toJson(je)
-//        val future=CompletableFuture.
-//        return prettyJsonString
-//    } catch (e: CoreException) {
-//        e.printStackTrace()
-//        return null;
-//    }
-//}
+
+fun getProductByIDAsync(id:String):CompletableFuture<String>{
+    val completableFuture = CompletableFuture<String>()
+
+    Executors.newCachedThreadPool().submit<Any> {
+        val product=getProductByID(id)
+        completableFuture.complete(product)
+    }
+
+    return completableFuture
+}
+
+fun getProductByID(id:String):String?{
+    val httpClient = HttpClient()
+    var jsonResponse = ""
+    val queryParams = HashMap<String, String>()
+    queryParams.put("\$format", "json")
+    try {
+        val url="https://services.odata.org/Northwind/Northwind.svc/Products($id)";
+        jsonResponse = httpClient.request(url, HttpMethod.GET,
+            mutableMapOf<String,String>(), queryParams, null)
+        val gson = GsonBuilder().setPrettyPrinting().create()
+        val jp = JsonParser()
+        val je = jp.parse(jsonResponse)
+        val prettyJsonString = gson.toJson(je)
+        return prettyJsonString;
+    } catch (e: CoreException) {
+        e.printStackTrace()
+        return null;
+    }
+}
